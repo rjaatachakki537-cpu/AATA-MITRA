@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aata Mitra - Grocery App</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f6; margin: 0; padding: 15px; }
+        header { background: #27ae60; color: white; padding: 20px; text-align: center; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        h1 { margin: 0; font-size: 24px; }
+        .product-card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: flex; align-items: center; justify-content: space-between; }
+        .product-info { flex-grow: 1; }
+        .product-name { font-weight: bold; font-size: 1.1em; color: #333; margin-bottom: 5px; }
+        .price { color: #27ae60; font-weight: bold; font-size: 1em; }
+        .stock { font-size: 0.85em; color: #888; margin-top: 5px; }
+        .add-btn { background: #27ae60; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .add-btn:active { transform: scale(0.95); background: #219150; }
+        #cart-bar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; background: #333; color: white; padding: 15px; text-align: center; border-radius: 30px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); display: none; cursor: pointer; z-index: 1000; font-weight: bold; }
+        #loading { text-align: center; color: #666; margin-top: 50px; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Aata Mitra</h1>
+    <p>Shuddh aur Taaza Grocery Aapke Ghar Tak</p>
+</header>
+
+<div id="loading">Maal load ho raha hai, kripya intezar karein...</div>
+<div id="product-list"></div>
+
+<div id="cart-bar" onclick="placeOrder()">
+    🛒 View Cart & Place Order
+</div>
+
+<script>
+    // Aapka provided URL yahan set kar diya hai
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbwk7g5nkPd12JH4VUjOvMBT--Liy5LsoffgYlDEh2ygD37dGNUBY0ZI7N9VzRuK0pUS/exec';
+
+    let cart = [];
+
+    // Google Sheet se Products load karne ka function
+    async function loadProducts() {
+        try {
+            const response = await fetch(scriptURL);
+            const data = await response.json();
+            document.getElementById('loading').style.display = 'none';
+            
+            let html = '';
+            if (data.length === 0) {
+                html = '<p style="text-align:center;">Abhi koi product available nahi hai.</p>';
+            } else {
+                data.forEach(item => {
+                    html += `
+                        <div class="product-card">
+                            <div class="product-info">
+                                <div class="product-name">${item.name}</div>
+                                <div class="price">₹${item.price} / ${item.unit}</div>
+                                <div class="stock">Stock: ${item.stock} ${item.unit} available</div>
+                            </div>
+                            <button class="add-btn" onclick="addToCart('${item.name}', ${item.price})">Add</button>
+                        </div>`;
+                });
+            }
+            document.getElementById('product-list').innerHTML = html;
+        } catch (error) {
+            console.error('Error:', error);
+            document.getElementById('loading').innerHTML = "Data load nahi ho paya. Sheet check karein!";
+        }
+    }
+
+    function addToCart(name, price) {
+        cart.push({ name, price });
+        document.getElementById('cart-bar').style.display = 'block';
+        document.getElementById('cart-bar').innerText = `🛒 ${cart.length} Item(s) added | Place Order`;
+    }
+
+    function placeOrder() {
+        if (cart.length === 0) return;
+        
+        // Ek simple prompt customer details lene ke liye
+        let customerName = prompt("Apna Naam likhein:");
+        let customerPhone = prompt("Apna Mobile Number likhein:");
+
+        if (customerName && customerPhone) {
+            const orderData = {
+                name: customerName,
+                phone: customerPhone,
+                items: cart.map(i => i.name).join(", "),
+                total: cart.reduce((sum, i) => sum + i.price, 0)
+            };
+
+            // Order ko Google Sheet mein bhejne ke liye
+            fetch(scriptURL, {
+                method: 'POST',
+                mode: 'no-cors', // Apps Script POST ke liye zaroori hai
+                cache: 'no-cache',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(orderData)
+            }).then(() => {
+                alert("Dhanyawad " + customerName + "! Aapka order mil gaya hai.");
+                cart = [];
+                document.getElementById('cart-bar').style.display = 'none';
+            }).catch(err => alert("Order fail ho gaya, kripya dubara koshish karein."));
+        }
+    }
+
+    // App khulte hi products load karein
+    loadProducts();
+</script>
+
+</body>
+</html>
